@@ -14,18 +14,18 @@ import (
 )
 
 func main() {
-	client, err := aerospike.NewClient("172.28.128.3", 3000)
+	client, err := aerospike.NewClient("localhost", 3000)
 	if err != nil {
 		log.Fatal(err)
 	}
 	l := distlock.NewAearospikeLocker(client, "distlock")
-	cp := checkpointer.NewAearospikeLocker(client, "distlock")
+	cp := checkpointer.NewAerospikeCheckpointer(client, "distlock")
 
 	awsConfig := &aws.Config{
 		Region: aws.String("us-east-1"),
 		Credentials: credentials.NewStaticCredentials(
-			"AKIAI2MUBA4UET6O3IHA",
-			"5IbcFZLdZXkG2dLWcPwNae0PbvWZleGiYSdCzhlu",
+			"",
+			"",
 			"",
 		),
 	}
@@ -33,7 +33,7 @@ func main() {
 	c := kcl.New(awsConfig, l, cp)
 
 	for i := 0; i < 1000; i++ {
-		go c.PutRecord("Test1", fmt.Sprintf("%d", i), []byte(fmt.Sprintf("Xrecord %d", i)))
+		go c.PutRecord("Test1", fmt.Sprintf("%d", i), []byte(fmt.Sprintf("record %d", i)))
 		time.Sleep(1 * time.Millisecond)
 	}
 
