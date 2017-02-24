@@ -16,8 +16,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	l := distlock.NewAearospikeLocker(client, "test")
-	cp := checkpointer.NewAearospikeLocker(client, "test")
 
 	awsConfig := &aws.Config{
 		Region: aws.String("us-east-1"),
@@ -28,7 +26,10 @@ func main() {
 		),
 	}
 
-	c := kcl.New(awsConfig, l, cp)
+	locker := distlock.NewAearospikeLocker(client, "test")
+	checkpointer := checkpointer.NewAerospikeCheckpointer(client, "test")
+
+	c := kcl.New(awsConfig, locker, checkpointer)
 
 	reader, err := c.NewSharedReader("Demo", "testClient2")
 	if err != nil {
