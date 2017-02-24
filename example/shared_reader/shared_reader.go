@@ -8,8 +8,8 @@ import (
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-
 	"github.com/matijavizintin/go-kcl"
+	"github.com/matijavizintin/go-kcl/checkpointer"
 	"github.com/matijavizintin/go-kcl/distlock"
 )
 
@@ -29,6 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 	l := distlock.NewAearospikeLocker(client, "test")
+	cp := checkpointer.NewAearospikeLocker(client, "test")
 
 	awsConfig := &aws.Config{
 		Region: aws.String("us-east-1"),
@@ -39,7 +40,7 @@ func main() {
 		),
 	}
 
-	c := kcl.New(awsConfig, l, &cp{})
+	c := kcl.New(awsConfig, l, cp)
 
 	go func() {
 		for i := 0; i < 1000; i++ {
