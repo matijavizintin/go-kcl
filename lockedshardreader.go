@@ -68,7 +68,7 @@ func (lr *LockedReader) Records() chan *kinesis.Record {
 	if checkpoint == "" {
 		shardIteratorType = aws.String(kinesis.ShardIteratorTypeTrimHorizon)
 	} else {
-		shardIteratorType = aws.String(kinesis.ShardIteratorTypeAtSequenceNumber)
+		shardIteratorType = aws.String(kinesis.ShardIteratorTypeAfterSequenceNumber)
 	}
 
 	iteratorInput := &kinesis.GetShardIteratorInput{

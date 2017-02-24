@@ -77,7 +77,7 @@ func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 	}()
 
 	for record := range lockedReader.Records() {
-		Logger.Printf("Shard %s | Message: %s", lockedReader.shardId, *record.SequenceNumber)
+		Logger.Printf("Shard %s | Message: %s", lockedReader.shardId, string(record.Data))
 
 		sr.recordsChan <- record
 	}
