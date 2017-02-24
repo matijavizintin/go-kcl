@@ -95,8 +95,6 @@ func (al *AerospikeLocker) set(key, value string) error {
 		return err
 	}
 
-	lockedTs := time.Now().UTC().Format(time.RFC3339)
-
 	hostname, err := os.Hostname()
 	if err != nil {
 		return err
@@ -109,7 +107,6 @@ func (al *AerospikeLocker) set(key, value string) error {
 		policy,
 		asKey,
 		aerospike.NewBin("hostname", hostname),
-		aerospike.NewBin("locked", lockedTs),
 		aerospike.NewBin("updated", time.Now().UTC().Format(time.RFC3339)),
 		aerospike.NewBin(valueBinName, value),
 	)
