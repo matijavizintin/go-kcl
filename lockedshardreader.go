@@ -12,6 +12,8 @@ import (
 
 const sleepTime = 100 * time.Millisecond
 
+var batchSize int64 = 100
+
 type LockedReader struct {
 	client   *Client
 	releaser distlock.Releaser
@@ -115,9 +117,14 @@ func (lr *LockedReader) Close() error {
 	return lr.err
 }
 
+func (lr *LockedReader) IsClosed() bool {
+	return lr.closed
+}
+
 func (lr *LockedReader) consumeStream(ch chan *kinesis.Record, shardIterator *string) {
 	for !lr.closed {
 		out, err := lr.client.kinesis.GetRecords(&kinesis.GetRecordsInput{
+			Limit:         &batchSize,
 			ShardIterator: shardIterator,
 		})
 		if err != nil {
