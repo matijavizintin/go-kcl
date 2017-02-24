@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	streamConsumerUpdate = time.Second
+	streamConsumerUpdate = time.Second * 5
 )
 
 type SharedReader struct {
@@ -89,10 +89,10 @@ func (sr *SharedReader) consumeRecords() {
 
 			sr.consumers = append(sr.consumers, lockedReader)
 			go sr.consumeShard(lockedReader)
+
+			break // one shard per interval
 		}
 	}
-
-	return
 }
 
 func (sr *SharedReader) Close() error {

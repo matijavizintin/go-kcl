@@ -4,10 +4,11 @@ import (
 	"errors"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+
+	"github.com/matijavizintin/go-kcl/distlock"
 )
 
 var (
@@ -18,20 +19,11 @@ var (
 
 type Client struct {
 	kinesis    kinesisiface.KinesisAPI
-	distlock   Locker
+	distlock   distlock.Locker
 	checkpoint Checkpointer
 }
 
-func New(awsKey, awsSecret, awsRegion string, distlock Locker, checkpoint Checkpointer) *Client {
-	awsConfig := &aws.Config{
-		Region: aws.String(awsRegion),
-		Credentials: credentials.NewStaticCredentials(
-			awsKey,
-			awsSecret,
-			"",
-		),
-	}
-
+func New(awsConfig *aws.Config, distlock distlock.Locker, checkpoint Checkpointer) *Client {
 	return &Client{
 		kinesis:    kinesis.New(session.New(awsConfig)),
 		distlock:   distlock,

@@ -1,4 +1,4 @@
-package kcl
+package distlock
 
 import (
 	"log"
