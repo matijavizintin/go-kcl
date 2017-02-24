@@ -1,14 +1,7 @@
 package kcl
 
 import (
-	"errors"
-
 	"github.com/aws/aws-sdk-go/service/kinesis"
-)
-
-var (
-	ErrMissingLocker       = errors.New("Missing locker")
-	ErrMissingCheckpointer = errors.New("Missing checkpointer")
 )
 
 type SharedReader struct {

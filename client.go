@@ -1,6 +1,8 @@
 package kcl
 
 import (
+	"errors"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -8,15 +10,15 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 )
 
+var (
+	ErrMissingLocker       = errors.New("Missing locker")
+	ErrMissingCheckpointer = errors.New("Missing checkpointer")
+)
+
 type Client struct {
 	kinesis    kinesisiface.KinesisAPI
 	distlock   Locker
 	checkpoint Checkpointer
-}
-
-type Reader struct {
-	records    <-chan *kinesis.Record
-	checkpoint string
 }
 
 func New(awsKey, awsSecret, awsRegion string, distlock Locker, checkpoint Checkpointer) *Client {
@@ -30,13 +32,10 @@ func New(awsKey, awsSecret, awsRegion string, distlock Locker, checkpoint Checkp
 	}
 
 	return &Client{
-		kinesis: kinesis.New(session.New(awsConfig)),
+		kinesis:    kinesis.New(session.New(awsConfig)),
+		distlock:   distlock,
+		checkpoint: checkpoint,
 	}
-}
-
-func (c *Client) NewLockedShardReader(streamName, shard, checkpointName string) (*Reader, error) {
-	// TODO
-	return nil, nil
 }
 
 func (c *Client) PutRecord(streamName, partitionKey string, record []byte) error {
@@ -61,9 +60,4 @@ func (c *Client) StreamDescription(streamName string) (*kinesis.StreamDescriptio
 	}
 
 	return out.StreamDescription, nil
-}
-
-func (r *Reader) SetCheckpoint() error {
-	// TODO
-	return nil
 }
