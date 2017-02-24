@@ -39,11 +39,6 @@ func (c *Client) NewLockedShardReader(streamName, shard, checkpointName string) 
 	return nil, nil
 }
 
-func (c *Client) NewSharedReader(streamName, checkpointName string) (*Reader, error) {
-	// TODO
-	return nil, nil
-}
-
 func (c *Client) PutRecord(streamName, partitionKey string, record []byte) error {
 	// TODO
 	return nil
