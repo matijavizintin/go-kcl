@@ -13,6 +13,7 @@ import (
 var (
 	ErrMissingLocker       = errors.New("Missing locker")
 	ErrMissingCheckpointer = errors.New("Missing checkpointer")
+	ErrShardLocked         = errors.New("Shard locked")
 )
 
 type Client struct {

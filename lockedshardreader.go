@@ -3,15 +3,17 @@ package kcl
 import "github.com/aws/aws-sdk-go/service/kinesis"
 
 type LockedReader struct {
-	client *Client
+	client   *Client
+	releaser Releaser
 
 	streamName     string
+	shardId        string
 	checkpointName string
 
 	err error
 }
 
-func (c *Client) NewLockedShardReader(streamName string, checkpointName string) (*LockedReader, error) {
+func (c *Client) NewLockedShardReader(streamName string, shardId string, checkpointName string) (*LockedReader, error) {
 	if c.distlock == nil {
 		return nil, ErrMissingLocker
 	}
@@ -19,12 +21,21 @@ func (c *Client) NewLockedShardReader(streamName string, checkpointName string) 
 		return nil, ErrMissingCheckpointer
 	}
 
-	r := &LockedReader{
-		client:         c,
-		streamName:     streamName,
-		checkpointName: checkpointName,
+	releaser, success, err := c.distlock.Lock(GetStreamKey(streamName, shardId, checkpointName))
+	if err != nil {
+		return nil, err
+	}
+	if !success {
+		return nil, ErrShardLocked
 	}
 
+	r := &LockedReader{
+		client:         c,
+		releaser:       releaser,
+		streamName:     streamName,
+		shardId:        shardId,
+		checkpointName: checkpointName,
+	}
 	return r, nil
 }
 
