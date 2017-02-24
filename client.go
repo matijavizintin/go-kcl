@@ -1,8 +1,6 @@
 package kcl
 
 import (
-	"fmt"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -27,4 +25,3 @@ func New(awsKey, awsSecret, awsRegion string) *Client {
 		kinesis: kinesis.New(session.New(awsConfig)),
 	}
 }
-
