@@ -17,8 +17,11 @@ type SharedReader struct {
 	streamName string
 	clientName string
 
-	err        error
-	stop       chan bool
+	err error
+
+	recordsChan chan *kinesis.Record
+
+	consumers  []*LockedReader
 	consumerWg *sync.WaitGroup
 }
 
@@ -31,11 +34,13 @@ func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedR
 	}
 
 	r := &SharedReader{
-		client:         c,
-		streamName:     streamName,
-		checkpointName: checkpointName,
+		client:     c,
+		streamName: streamName,
+		clientName: clientName,
 
-		stop:       make(chan bool),
+		recordsChan: make(chan *kinesis.Record),
+
+		consumers:  []*LockedReader{},
 		consumerWg: &sync.WaitGroup{},
 	}
 
@@ -43,60 +48,66 @@ func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedR
 }
 
 func (sr *SharedReader) Records() chan *kinesis.Record {
-	c := make(chan *kinesis.Record)
 	go func() {
-		err := sr.consumeRecords(c)
-		if err != nil {
-			sr.err = err
-			sr.consumerWg.Wait()
-			close(c)
-		}
+		sr.consumeRecords()
+		// TODO stop consumers
+		sr.consumerWg.Wait()
+		sr.Close()
 	}()
-	return c
+	return sr.recordsChan
 }
 
-func (sr *SharedReader) tryConsumeShard(shard *kinesis.Shard, c chan *kinesis.Record) error {
+func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 	sr.consumerWg.Add(1)
 	defer sr.consumerWg.Done()
 
-	lockerReader, err := NewLockedShardReader(sr.streamName, shard.GoString(), sr.checkpointName)
-	if err != nil {
-		return err
+	for record := range lockedReader.Records() {
+		sr.recordsChan <- record
 	}
-
-	for _, record := range lockerReader.Records() {
-		c <- record
+	if err := lockedReader.Close(); err != nil {
+		sr.err = err
 	}
-
-	return lockerReader.Err()
 }
 
-func (sr *SharedReader) consumeRecords(c chan *kinesis.Record) error {
+func (sr *SharedReader) consumeRecords() {
 	interval := time.NewTicker(streamConsumerUpdate)
 	for range interval.C {
 		streamDescription, err := sr.client.StreamDescription(sr.streamName)
 		if err != nil {
-			return err
+			sr.err = err
+			return
 		}
 
 		for _, shard := range streamDescription.Shards {
-			err := sr.tryConsumeShard(shard, c)
+			lockedReader, err := sr.client.NewLockedShardReader(sr.streamName, shard.GoString(), sr.clientName)
 			if err == ErrShardLocked {
 				continue
 			} else if err != nil {
-				return err
+				sr.err = err
+				return
 			}
+
+			sr.consumers = append(sr.consumers, lockedReader)
+			go sr.consumeShard(lockedReader)
 		}
 	}
 
-	return nil
+	return
 }
 
-func (sr *SharedReader) Err() error {
+func (sr *SharedReader) Close() error {
+	sr.consumerWg.Wait()
+	close(sr.recordsChan)
 	return sr.err
 }
 
 func (sr *SharedReader) UpdateCheckpoint() error {
-	// TODO
-	return sr.client.checkpoint.SetCheckpoint("shard", sr.clientName, "value")
+	for _, c := range sr.consumers {
+		err := c.UpdateCheckpoint()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
