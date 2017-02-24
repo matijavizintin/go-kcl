@@ -63,8 +63,10 @@ func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 	sr.consumerWg.Add(1)
 	defer sr.consumerWg.Done()
 
+	Logger.Printf("Consuming shard: %s", lockedReader.shardId)
+
 	for record := range lockedReader.Records() {
-		Logger.Printf("Got message: %s", *record.SequenceNumber)
+		Logger.Printf("Shard %s | Message: %s", lockedReader.shardId, *record.SequenceNumber)
 
 		sr.recordsChan <- record
 	}
@@ -95,8 +97,6 @@ func (sr *SharedReader) consumeRecords() {
 				sr.err = err
 				return
 			}
-
-			Logger.Printf("Consuming shard: %s", *shard.ShardId)
 
 			sr.consumers = append(sr.consumers, lockedReader)
 			go sr.consumeShard(lockedReader)

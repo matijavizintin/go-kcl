@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/aws/aws-sdk-go/aws"
@@ -39,7 +41,12 @@ func main() {
 
 	c := kcl.New(awsConfig, l, &cp{})
 
-	c.PutRecord("Test1", "key", []byte("record"))
+	go func() {
+		for i := 0; i < 1000; i++ {
+			c.PutRecord("Test1", fmt.Sprintf("%d", i), []byte(fmt.Sprintf("record %d", i)))
+			time.Sleep(time.Second)
+		}
+	}()
 
 	reader, err := c.NewSharedReader("Test1", "testClient")
 	if err != nil {
