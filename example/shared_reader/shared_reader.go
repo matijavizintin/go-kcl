@@ -13,16 +13,6 @@ import (
 	"github.com/matijavizintin/go-kcl/distlock"
 )
 
-type cp struct{}
-
-func (c *cp) SetCheckpoint(key string, value string) error {
-	return nil
-}
-
-func (c *cp) GetCheckpoint(key string) (string, error) {
-	return "", nil
-}
-
 func main() {
 	client, err := aerospike.NewClient("localhost", 3000)
 	if err != nil {
