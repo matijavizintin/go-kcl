@@ -6,6 +6,7 @@ import (
 
 	"b1/services/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+
 	"github.com/matijavizintin/go-kcl/distlock"
 )
 

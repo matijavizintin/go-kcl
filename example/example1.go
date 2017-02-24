@@ -41,8 +41,8 @@ func put(client *kinesis.Kinesis) {
 
 func get(client *kinesis.Kinesis) {
 	iterator, err := client.GetShardIterator(&kinesis.GetShardIteratorInput{
-		StreamName: aws.String("Test1"),
-		ShardId: aws.String("shardId-000000000001"),
+		StreamName:        aws.String("Test1"),
+		ShardId:           aws.String("shardId-000000000001"),
 		ShardIteratorType: aws.String("TRIM_HORIZON"),
 	})
 	if err != nil {

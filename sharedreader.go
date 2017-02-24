@@ -20,6 +20,8 @@ type SharedReader struct {
 	err error
 
 	recordsChan chan *kinesis.Record
+	closed      bool
+	closedMu    sync.Mutex
 
 	consumers  []*LockedReader
 	consumerWg *sync.WaitGroup
@@ -62,16 +64,23 @@ func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 	defer sr.consumerWg.Done()
 
 	for record := range lockedReader.Records() {
+		Logger.Printf("Got message: %s", *record.SequenceNumber)
+
 		sr.recordsChan <- record
 	}
 	if err := lockedReader.Close(); err != nil {
 		sr.err = err
+		sr.Close()
 	}
 }
 
 func (sr *SharedReader) consumeRecords() {
 	interval := time.NewTicker(streamConsumerUpdate)
 	for range interval.C {
+		if sr.closed {
+			return
+		}
+
 		streamDescription, err := sr.client.StreamDescription(sr.streamName)
 		if err != nil {
 			sr.err = err
@@ -79,13 +88,15 @@ func (sr *SharedReader) consumeRecords() {
 		}
 
 		for _, shard := range streamDescription.Shards {
-			lockedReader, err := sr.client.NewLockedShardReader(sr.streamName, shard.GoString(), sr.clientName)
+			lockedReader, err := sr.client.NewLockedShardReader(sr.streamName, *shard.ShardId, sr.clientName)
 			if err == ErrShardLocked {
 				continue
 			} else if err != nil {
 				sr.err = err
 				return
 			}
+
+			Logger.Printf("Consuming shard: %s", *shard.ShardId)
 
 			sr.consumers = append(sr.consumers, lockedReader)
 			go sr.consumeShard(lockedReader)
@@ -96,8 +107,17 @@ func (sr *SharedReader) consumeRecords() {
 }
 
 func (sr *SharedReader) Close() error {
-	sr.consumerWg.Wait()
-	close(sr.recordsChan)
+	sr.closedMu.Lock()
+	defer sr.closedMu.Unlock()
+
+	if !sr.closed {
+		sr.closed = true
+		go func() {
+			sr.consumerWg.Wait()
+			close(sr.recordsChan)
+		}()
+	}
+
 	return sr.err
 }
 

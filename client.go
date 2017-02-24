@@ -2,6 +2,8 @@ package kcl
 
 import (
 	"errors"
+	"log"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -16,6 +18,8 @@ var (
 	ErrMissingCheckpointer = errors.New("Missing checkpointer")
 	ErrShardLocked         = errors.New("Shard locked")
 )
+
+var Logger = log.New(os.Stderr, "", log.LstdFlags)
 
 type Client struct {
 	kinesis    kinesisiface.KinesisAPI
