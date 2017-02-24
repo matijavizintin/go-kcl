@@ -40,8 +40,27 @@ func (c *Client) NewLockedShardReader(streamName, shard, checkpointName string) 
 }
 
 func (c *Client) PutRecord(streamName, partitionKey string, record []byte) error {
-	// TODO
+	_, err := c.kinesis.PutRecord(&kinesis.PutRecordInput{
+		Data:         record,
+		StreamName:   aws.String(streamName),
+		PartitionKey: aws.String(partitionKey),
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (c *Client) StreamDescription(streamName string) (*kinesis.StreamDescription, error) {
+	out, err := c.kinesis.DescribeStream(&kinesis.DescribeStreamInput{
+		StreamName: aws.String(streamName),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out.StreamDescription, nil
 }
 
 func (r *Reader) SetCheckpoint() error {
