@@ -2,13 +2,16 @@ package kcl
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
 var (
-	streamConsumerUpdate = time.Second * 5
+	streamConsumerUpdateMin = time.Second * 5
+	streamConsumerUpdateMax = time.Second * 30
+	restartConsumerInterval = time.Duration(60) * time.Second
 )
 
 type SharedReader struct {
@@ -25,6 +28,8 @@ type SharedReader struct {
 
 	consumers  []*LockedReader
 	consumerWg *sync.WaitGroup
+
+	runningConsumers int64
 }
 
 func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedReader, error) {
@@ -50,20 +55,26 @@ func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedR
 }
 
 func (sr *SharedReader) Records() chan *kinesis.Record {
-	go func() {
-		sr.consumeRecords()
-		// TODO stop consumers
-		sr.consumerWg.Wait()
-		sr.Close()
-	}()
+	go sr.consumeRecords()
 	return sr.recordsChan
 }
 
 func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 	sr.consumerWg.Add(1)
+	atomic.AddInt64(&sr.runningConsumers, 1)
 	defer sr.consumerWg.Done()
+	defer atomic.AddInt64(&sr.runningConsumers, -1)
 
 	Logger.Printf("Consuming shard: %s", lockedReader.shardId)
+
+	go func() {
+		<-time.After(restartConsumerInterval)
+
+		if err := lockedReader.Close(); err != nil {
+			sr.err = err
+			sr.Close()
+		}
+	}()
 
 	for record := range lockedReader.Records() {
 		Logger.Printf("Shard %s | Message: %s", lockedReader.shardId, *record.SequenceNumber)
@@ -77,8 +88,7 @@ func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 }
 
 func (sr *SharedReader) consumeRecords() {
-	interval := time.NewTicker(streamConsumerUpdate)
-	for range interval.C {
+	for {
 		if sr.closed {
 			return
 		}
@@ -103,6 +113,12 @@ func (sr *SharedReader) consumeRecords() {
 
 			break // one shard per interval
 		}
+
+		updateInterval := streamConsumerUpdateMin * time.Duration(sr.runningConsumers+1)
+		if updateInterval > streamConsumerUpdateMax {
+			updateInterval = streamConsumerUpdateMax
+		}
+		time.Sleep(updateInterval)
 	}
 }
 
