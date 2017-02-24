@@ -10,7 +10,7 @@ import (
 	"github.com/matijavizintin/go-kcl/distlock"
 )
 
-const sleepTime = 100 * time.Millisecond
+const sleepTime = 100 * time.Microsecond
 
 var batchSize int64 = 100
 
