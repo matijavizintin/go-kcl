@@ -1,4 +1,4 @@
-package kcl
+package checkpointer
 
 type Checkpointer interface {
 	SetCheckpoint(key string, value string) error

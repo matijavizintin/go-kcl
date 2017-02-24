@@ -2,14 +2,18 @@ package kcl
 
 import (
 	"sync"
+	"time"
 
 	"b1/services/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/matijavizintin/go-kcl/distlock"
 )
+
+const sleepTime = 100 * time.Millisecond
 
 type LockedReader struct {
 	client   *Client
-	releaser Releaser
+	releaser distlock.Releaser
 
 	streamName string
 	shardId    string
@@ -66,12 +70,16 @@ func (lr *LockedReader) Records() chan *kinesis.Record {
 		shardIteratorType = aws.String(kinesis.ShardIteratorTypeAtSequenceNumber)
 	}
 
-	iterator, err := lr.client.kinesis.GetShardIterator(&kinesis.GetShardIteratorInput{
-		StreamName:             aws.String(lr.streamName),
-		ShardId:                aws.String(lr.shardId),
-		ShardIteratorType:      shardIteratorType,
-		StartingSequenceNumber: aws.String(checkpoint),
-	})
+	iteratorInput := &kinesis.GetShardIteratorInput{
+		StreamName:        aws.String(lr.streamName),
+		ShardId:           aws.String(lr.shardId),
+		ShardIteratorType: shardIteratorType,
+	}
+	if checkpoint != "" {
+		iteratorInput.StartingSequenceNumber = aws.String(checkpoint)
+	}
+
+	iterator, err := lr.client.kinesis.GetShardIterator(iteratorInput)
 	if err != nil {
 		lr.err = err
 		close(ch)
@@ -118,7 +126,6 @@ func (lr *LockedReader) consumeStream(ch chan *kinesis.Record, shardIterator *st
 		}
 
 		shardIterator = out.NextShardIterator
-
 		if len(out.Records) == 0 {
 			continue
 		}
@@ -127,6 +134,8 @@ func (lr *LockedReader) consumeStream(ch chan *kinesis.Record, shardIterator *st
 			ch <- record
 			lr.checkpoint = record.SequenceNumber
 		}
+
+		time.Sleep(sleepTime)
 	}
 
 	close(ch)
