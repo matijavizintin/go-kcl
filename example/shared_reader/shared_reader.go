@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,27 +23,25 @@ func main() {
 		Region: aws.String("us-east-1"),
 		Credentials: credentials.NewStaticCredentials(
 			"AKIAI2MUBA4UET6O3IHA",
-			"",
+			"5IbcFZLdZXkG2dLWcPwNae0PbvWZleGiYSdCzhlu",
 			"",
 		),
 	}
 
 	c := kcl.New(awsConfig, l, cp)
 
-	go func() {
-		for i := 0; i < 1000; i++ {
-			c.PutRecord("Test1", fmt.Sprintf("%d", i), []byte(fmt.Sprintf("record %d", i)))
-			time.Sleep(time.Second)
-		}
-	}()
-
-	reader, err := c.NewSharedReader("Test1", "testClient")
+	reader, err := c.NewSharedReader("Demo", "testClient2")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for m := range reader.Records() {
-		log.Print("Data: ", string(m.Data))
+	for range reader.Records() {
+		//log.Print("Data: ", string(m.Data))
+
+		err := reader.UpdateCheckpoint()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	if err := reader.Close(); err != nil {
