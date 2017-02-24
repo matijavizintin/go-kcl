@@ -1,2 +1,0 @@
-# distlock
-Distributed locking interface
