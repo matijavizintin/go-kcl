@@ -1,5 +1,5 @@
 package kcl
 
-func GetStreamKey(streamName, shardId, checkpointName string) string {
-	return streamName + "/" + shardId + "/" + checkpointName
+func GetStreamKey(streamName, shardId, clientName string) string {
+	return streamName + "/" + shardId + "/" + clientName
 }
