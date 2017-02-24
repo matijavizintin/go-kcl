@@ -26,8 +26,9 @@ type SharedReader struct {
 	closed      bool
 	closedMu    sync.Mutex
 
-	consumers  []*LockedReader
-	consumerWg *sync.WaitGroup
+	consumers   []*LockedReader
+	consumersMu sync.Mutex
+	consumerWg  *sync.WaitGroup
 
 	runningConsumers int64
 }
@@ -108,7 +109,10 @@ func (sr *SharedReader) consumeRecords() {
 				return
 			}
 
+			sr.consumersMu.Lock()
 			sr.consumers = append(sr.consumers, lockedReader)
+			sr.consumersMu.Unlock()
+
 			go sr.consumeShard(lockedReader)
 
 			break // one shard per interval
@@ -138,12 +142,23 @@ func (sr *SharedReader) Close() error {
 }
 
 func (sr *SharedReader) UpdateCheckpoint() error {
+	sr.consumersMu.Lock()
+	defer sr.consumersMu.Unlock()
+
+	newConsumers := sr.consumers[0:0]
+
 	for _, c := range sr.consumers {
+		closed := c.IsClosed()
 		err := c.UpdateCheckpoint()
 		if err != nil {
 			return err
 		}
+		if !closed {
+			newConsumers = append(newConsumers, c)
+		}
 	}
+
+	sr.consumers = newConsumers
 
 	return nil
 }
