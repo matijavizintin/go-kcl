@@ -14,25 +14,25 @@ const setName = "checkpoint"
 const valueBinName = "checkpoint"
 
 type AerospikeReleaser struct {
-	locker *AerospikeLocker
+	locker *AerospikeCheckpointer
 
 	stop chan bool
 	key  *aerospike.Key
 }
 
-type AerospikeLocker struct {
+type AerospikeCheckpointer struct {
 	client    *aerospike.Client
 	namespace string
 }
 
-func NewAearospikeLocker(client *aerospike.Client, namespace string) *AerospikeLocker {
-	return &AerospikeLocker{
+func NewAerospikeCheckpointer(client *aerospike.Client, namespace string) *AerospikeCheckpointer {
+	return &AerospikeCheckpointer{
 		client:    client,
 		namespace: namespace,
 	}
 }
 
-func (al *AerospikeLocker) GetCheckpoint(key string) (string, error) {
+func (al *AerospikeCheckpointer) GetCheckpoint(key string) (string, error) {
 	errTries := 0
 	for {
 		val, err := al.get(key)
@@ -48,7 +48,7 @@ func (al *AerospikeLocker) GetCheckpoint(key string) (string, error) {
 	}
 }
 
-func (al *AerospikeLocker) SetCheckpoint(key, value string) error {
+func (al *AerospikeCheckpointer) SetCheckpoint(key, value string) error {
 	var err error
 
 	errTries := 0
@@ -66,7 +66,7 @@ func (al *AerospikeLocker) SetCheckpoint(key, value string) error {
 	}
 }
 
-func (al *AerospikeLocker) get(key string) (string, error) {
+func (al *AerospikeCheckpointer) get(key string) (string, error) {
 	asKey, err := aerospike.NewKey(al.namespace, setName, key)
 	if err != nil {
 		return "", err
@@ -89,7 +89,7 @@ func (al *AerospikeLocker) get(key string) (string, error) {
 	return "", nil
 }
 
-func (al *AerospikeLocker) set(key, value string) error {
+func (al *AerospikeCheckpointer) set(key, value string) error {
 	asKey, err := aerospike.NewKey(al.namespace, setName, key)
 	if err != nil {
 		return err
