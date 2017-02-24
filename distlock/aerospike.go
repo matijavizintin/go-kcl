@@ -10,7 +10,7 @@ import (
 
 const aerospikePingInterval = time.Second
 const waitSleep = time.Duration(100) * time.Millisecond
-const aerospikeTTL = 30
+const aerospikeTTL = 10
 const waitRetries = 3
 
 type AerospikeReleaser struct {

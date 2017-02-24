@@ -99,6 +99,8 @@ func (lr *LockedReader) UpdateCheckpoint() error {
 		return nil
 	}
 
+	// TODO: Set set checkpoint to nil after SetCheckpoint if it didn't change
+
 	return lr.client.checkpoint.SetCheckpoint(GetStreamKey(lr.streamName, lr.shardId, lr.clientName), *lr.checkpoint)
 }
 
