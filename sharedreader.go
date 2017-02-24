@@ -86,6 +86,8 @@ func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 		sr.err = err
 		sr.Close()
 	}
+
+	Logger.Printf("Stopped consuming shard: %s", lockedReader.shardId)
 }
 
 func (sr *SharedReader) consumeRecords() {
