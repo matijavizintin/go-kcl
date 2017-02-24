@@ -9,19 +9,47 @@ import (
 )
 
 type Client struct {
-	kinesis kinesisiface.KinesisAPI
+	kinesis    kinesisiface.KinesisAPI
+	distlock   Locker
+	checkpoint Checkpointer
 }
 
-func New(awsKey, awsSecret, awsRegion string) *Client {
+type Reader struct {
+	records    <-chan *kinesis.Record
+	checkpoint string
+}
+
+func New(awsKey, awsSecret, awsRegion string, distlock Locker, checkpoint Checkpointer) *Client {
 	awsConfig := &aws.Config{
-		Region: aws.String("us-east-1"),
+		Region: aws.String(awsRegion),
 		Credentials: credentials.NewStaticCredentials(
-			"AKIAI2MUBA4UET6O3IHA",
-			"",
+			awsKey,
+			awsSecret,
 			"",
 		),
 	}
+
 	return &Client{
 		kinesis: kinesis.New(session.New(awsConfig)),
 	}
+}
+
+func (c *Client) NewLockedShardReader(streamName, shard, checkpointName string) (*Reader, error) {
+	// TODO
+	return nil, nil
+}
+
+func (c *Client) NewSharedReader(streamName, checkpointName string) (*Reader, error) {
+	// TODO
+	return nil, nil
+}
+
+func (c *Client) PutRecord(streamName, partitionKey string, record []byte) error {
+	// TODO
+	return nil
+}
+
+func (r *Reader) SetCheckpoint() error {
+	// TODO
+	return nil
 }
