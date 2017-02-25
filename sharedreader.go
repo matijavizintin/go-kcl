@@ -9,8 +9,7 @@ import (
 )
 
 var (
-	streamConsumerUpdateMin = time.Second * 2
-	streamConsumerUpdateMax = time.Second * 30
+	streamConsumerUpdate    = time.Second * 2
 	restartConsumerInterval = time.Duration(60) * time.Second
 )
 
@@ -91,7 +90,7 @@ func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
 }
 
 func (sr *SharedReader) consumeRecords() {
-	for {
+	for range time.Tick(streamConsumerUpdate) {
 		if sr.closed {
 			return
 		}
@@ -99,15 +98,20 @@ func (sr *SharedReader) consumeRecords() {
 		streamDescription, err := sr.client.StreamDescription(sr.streamName)
 		if err != nil {
 			sr.err = err
+			sr.Close()
 			return
 		}
 
 		for _, shard := range streamDescription.Shards {
+			if !sr.client.elections.CheckAndAdd(GetStreamKey(sr.streamName, *shard.ShardId, sr.clientName)) {
+				continue
+			}
 			lockedReader, err := sr.client.NewLockedShardReader(sr.streamName, *shard.ShardId, sr.clientName)
 			if err == ErrShardLocked {
 				continue
 			} else if err != nil {
 				sr.err = err
+				sr.Close()
 				return
 			}
 
@@ -119,13 +123,6 @@ func (sr *SharedReader) consumeRecords() {
 
 			break // one shard per interval
 		}
-
-		shardsSq := time.Duration(sr.runningConsumers+1) * time.Duration(sr.runningConsumers+1)
-		updateInterval := streamConsumerUpdateMin * shardsSq
-		if updateInterval > streamConsumerUpdateMax {
-			updateInterval = streamConsumerUpdateMax
-		}
-		time.Sleep(updateInterval)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/matijavizintin/go-kcl/checkpointer"
 	"github.com/matijavizintin/go-kcl/distlock"
+	"github.com/matijavizintin/go-kcl/election"
 )
 
 var (
@@ -25,13 +26,15 @@ type Client struct {
 	kinesis    kinesisiface.KinesisAPI
 	distlock   distlock.Locker
 	checkpoint checkpointer.Checkpointer
+	elections  election.Election
 }
 
-func New(awsConfig *aws.Config, distlock distlock.Locker, checkpoint checkpointer.Checkpointer) *Client {
+func New(awsConfig *aws.Config, distlock distlock.Locker, checkpoint checkpointer.Checkpointer, elections election.Election) *Client {
 	return &Client{
 		kinesis:    kinesis.New(session.New(awsConfig)),
 		distlock:   distlock,
 		checkpoint: checkpoint,
+		elections:  elections,
 	}
 }
 

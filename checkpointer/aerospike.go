@@ -81,10 +81,9 @@ func (al *AerospikeCheckpointer) get(key string) (string, error) {
 		return "", nil
 	}
 
-	for binName, binContent := range record.Bins {
-		if binName == valueBinName {
-			return binContent.(string), nil
-		}
+	binContent, ok := record.Bins[valueBinName]
+	if ok {
+		return binContent.(string), nil
 	}
 	return "", nil
 }
