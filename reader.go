@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"b1/services/aws"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
