@@ -7,11 +7,13 @@ import (
 	"github.com/aerospike/aerospike-client-go"
 )
 
-const waitSleep = time.Duration(100) * time.Millisecond
-const aerospikeTTL = 365 * 24 * 3600
-const waitRetries = 3
-const setName = "checkpoint"
-const valueBinName = "checkpoint"
+const (
+	waitSleep    = time.Duration(100) * time.Millisecond
+	aerospikeTTL = 365 * 24 * 3600
+	waitRetries  = 3
+	setName      = "kcl-checkpoint"
+	valueBinName = "checkpoint"
+)
 
 type AerospikeReleaser struct {
 	locker *AerospikeCheckpointer

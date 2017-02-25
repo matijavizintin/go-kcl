@@ -40,8 +40,8 @@ func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedR
 	if c.checkpoint == nil {
 		return nil, ErrMissingCheckpointer
 	}
-	if c.elections == nil {
-		return nil, ErrMissingElections
+	if c.snitch == nil {
+		return nil, ErrMissingSnitcher
 	}
 
 	r := &SharedReader{
@@ -102,7 +102,10 @@ func (sr *SharedReader) consumeRecords() {
 			key := GetStreamKey(sr.streamName, *shard.ShardId, sr.clientName)
 			sc := runningConsumers[key]
 
-			if !sr.client.elections.CheckAndAdd(key) {
+			// TODO async shard updater
+			sr.client.snitch.RegisterKey(key)
+
+			if !sr.client.snitch.CheckOwnership(key) {
 				if sc != nil && sc.running {
 					sc.lockedReader.Close()
 				}

@@ -7,7 +7,7 @@ import (
 	"b1/services/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 
-	"github.com/matijavizintin/go-kcl/distlock"
+	"github.com/matijavizintin/go-kcl/locker"
 )
 
 const sleepTime = 100 * time.Microsecond
@@ -16,7 +16,7 @@ var batchSize int64 = 100
 
 type LockedReader struct {
 	client   *Client
-	releaser distlock.Releaser
+	releaser locker.Releaser
 
 	streamName string
 	shardId    string

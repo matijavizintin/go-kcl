@@ -10,14 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/matijavizintin/go-kcl/checkpointer"
-	"github.com/matijavizintin/go-kcl/distlock"
-	"github.com/matijavizintin/go-kcl/election"
+	"github.com/matijavizintin/go-kcl/locker"
+	"github.com/matijavizintin/go-kcl/snitcher"
 )
 
 var (
 	ErrMissingLocker       = errors.New("Missing locker")
 	ErrMissingCheckpointer = errors.New("Missing checkpointer")
-	ErrMissingElections    = errors.New("Missing elections")
+	ErrMissingSnitcher     = errors.New("Missing snitcher")
 	ErrShardLocked         = errors.New("Shard locked")
 )
 
@@ -25,17 +25,17 @@ var Logger = log.New(os.Stderr, "", log.LstdFlags)
 
 type Client struct {
 	kinesis    kinesisiface.KinesisAPI
-	distlock   distlock.Locker
+	distlock   locker.Locker
 	checkpoint checkpointer.Checkpointer
-	elections  election.Election
+	snitch     snitcher.Snitcher
 }
 
-func New(awsConfig *aws.Config, distlock distlock.Locker, checkpoint checkpointer.Checkpointer, elections election.Election) *Client {
+func New(awsConfig *aws.Config, distlock locker.Locker, checkpoint checkpointer.Checkpointer, snitch snitcher.Snitcher) *Client {
 	return &Client{
 		kinesis:    kinesis.New(session.New(awsConfig)),
 		distlock:   distlock,
 		checkpoint: checkpoint,
-		elections:  elections,
+		snitch:     snitch,
 	}
 }
 

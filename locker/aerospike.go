@@ -1,4 +1,4 @@
-package distlock
+package locker
 
 import (
 	"os"
@@ -8,10 +8,13 @@ import (
 	"github.com/aerospike/aerospike-client-go/types"
 )
 
-const aerospikePingInterval = time.Second
-const waitSleep = time.Duration(100) * time.Millisecond
-const aerospikeTTL = 10
-const waitRetries = 3
+const (
+	aerospikePingInterval = time.Second
+	waitSleep             = time.Duration(100) * time.Millisecond
+	aerospikeTTL          = 5
+	waitRetries           = 3
+	setName               = "kcl-distlock"
+)
 
 type AerospikeReleaser struct {
 	locker *AerospikeLocker
@@ -77,7 +80,7 @@ func (al *AerospikeLocker) LockWait(name string) (Releaser, error) {
 }
 
 func (al *AerospikeLocker) Lock(name string) (Releaser, bool, error) {
-	key, err := aerospike.NewKey(al.namespace, "distlock", name)
+	key, err := aerospike.NewKey(al.namespace, setName, name)
 	if err != nil {
 		return nil, false, err
 	}

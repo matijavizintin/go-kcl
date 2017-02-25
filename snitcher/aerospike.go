@@ -1,4 +1,4 @@
-package election
+package snitcher
 
 import (
 	"log"
@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	setName      = "election"
+	setName      = "kcl-snitcher"
 	aerospikeTTL = 5
 )
 
 var Logger = log.New(os.Stderr, "", log.LstdFlags)
 
-type AerospikeElection struct {
+type AerospikeSnitcher struct {
 	client    *aerospike.Client
 	namespace string
 	clientId  string
@@ -36,10 +36,10 @@ type candidate struct {
 	order   float64
 }
 
-func NewAerospikeElection(client *aerospike.Client, namespace string) *AerospikeElection {
+func NewAerospikeSnitcher(client *aerospike.Client, namespace string) *AerospikeSnitcher {
 	clientId, _ := newUUID()
 
-	ae := &AerospikeElection{
+	ae := &AerospikeSnitcher{
 		client:     client,
 		namespace:  namespace,
 		clientId:   clientId,
@@ -47,12 +47,12 @@ func NewAerospikeElection(client *aerospike.Client, namespace string) *Aerospike
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 
-	go ae.runElections()
+	go ae.runSnitchers()
 
 	return ae
 }
 
-func (ae *AerospikeElection) runElections() {
+func (ae *AerospikeSnitcher) runSnitchers() {
 	for range time.Tick(time.Second) {
 		candidates := []*candidate{}
 		ae.candidatesMu.RLock()
@@ -99,7 +99,7 @@ func (ae *AerospikeElection) runElections() {
 
 			if (topScore > 0.0 && myScore-topScore > 0.0) && ae.clientId != topClientId {
 				if candidate.winnner {
-					Logger.Print("Election lost: ", candidate.key)
+					Logger.Print("Ownership lost: ", candidate.key)
 					candidate.winnner = false
 				}
 				continue
@@ -153,34 +153,45 @@ func (ae *AerospikeElection) runElections() {
 					numcandidates += 1.0
 
 					if !candidate.winnner {
-						Logger.Print("Election won: ", candidate.key)
+						Logger.Print("Ownership won: ", candidate.key)
 						candidate.winnner = true
 					}
 					continue
 				}
 			}
 			if candidate.winnner {
-				Logger.Print("Election lost: ", candidate.key)
+				Logger.Print("Ownership lost: ", candidate.key)
 				candidate.winnner = false
 			}
 		}
 	}
 }
 
-func (ae *AerospikeElection) CheckAndAdd(key string) bool {
+func (ae *AerospikeSnitcher) CheckOwnership(key string) bool {
 	ae.candidatesMu.RLock()
 	w, ok := ae.candidates[key]
 	ae.candidatesMu.RUnlock()
 
 	if !ok {
-		ae.candidatesMu.Lock()
-		ae.candidates[key] = &candidate{
-			key:   key,
-			order: ae.rand.Float64(),
-		}
-		ae.candidatesMu.Unlock()
 		return false
 	}
 
 	return w.winnner
+}
+
+func (ae *AerospikeSnitcher) RegisterKey(key string) {
+	ae.candidatesMu.RLock()
+	_, ok := ae.candidates[key]
+	ae.candidatesMu.RUnlock()
+
+	if ok {
+		return
+	}
+
+	ae.candidatesMu.Lock()
+	ae.candidates[key] = &candidate{
+		key:   key,
+		order: ae.rand.Float64(),
+	}
+	ae.candidatesMu.Unlock()
 }

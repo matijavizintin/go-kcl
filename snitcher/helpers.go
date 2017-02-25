@@ -1,4 +1,4 @@
-package election
+package snitcher
 
 import (
 	"crypto/rand"
