@@ -17,6 +17,7 @@ import (
 var (
 	ErrMissingLocker       = errors.New("Missing locker")
 	ErrMissingCheckpointer = errors.New("Missing checkpointer")
+	ErrMissingElections    = errors.New("Missing elections")
 	ErrShardLocked         = errors.New("Shard locked")
 )
 

@@ -2,15 +2,13 @@ package kcl
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
 var (
-	streamConsumerUpdate    = time.Second * 2
-	restartConsumerInterval = time.Duration(60) * time.Second
+	streamConsumerUpdate = time.Second * 2
 )
 
 type SharedReader struct {
@@ -28,8 +26,11 @@ type SharedReader struct {
 	consumers   []*LockedReader
 	consumersMu sync.Mutex
 	consumerWg  *sync.WaitGroup
+}
 
-	runningConsumers int64
+type shardConsumer struct {
+	lockedReader *LockedReader
+	running      bool
 }
 
 func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedReader, error) {
@@ -38,6 +39,9 @@ func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedR
 	}
 	if c.checkpoint == nil {
 		return nil, ErrMissingCheckpointer
+	}
+	if c.elections == nil {
+		return nil, ErrMissingElections
 	}
 
 	r := &SharedReader{
@@ -59,37 +63,29 @@ func (sr *SharedReader) Records() chan *kinesis.Record {
 	return sr.recordsChan
 }
 
-func (sr *SharedReader) consumeShard(lockedReader *LockedReader) {
+func (sr *SharedReader) consumeShard(sc *shardConsumer) {
 	sr.consumerWg.Add(1)
-	atomic.AddInt64(&sr.runningConsumers, 1)
 	defer sr.consumerWg.Done()
-	defer atomic.AddInt64(&sr.runningConsumers, -1)
 
-	Logger.Printf("Consuming shard: %s", lockedReader.shardId)
+	Logger.Printf("Consuming shard: %s", sc.lockedReader.shardId)
 
-	go func() {
-		<-time.After(restartConsumerInterval)
-
-		if err := lockedReader.Close(); err != nil {
-			sr.err = err
-			sr.Close()
-		}
-	}()
-
-	for record := range lockedReader.Records() {
-		Logger.Printf("Shard %s | Message: %s", lockedReader.shardId, string(record.Data))
+	for record := range sc.lockedReader.Records() {
+		Logger.Printf("Shard %s | Message: %s", sc.lockedReader.shardId, string(record.Data))
 
 		sr.recordsChan <- record
 	}
-	if err := lockedReader.Close(); err != nil {
+	if err := sc.lockedReader.Close(); err != nil {
 		sr.err = err
 		sr.Close()
 	}
+	sc.running = false
 
-	Logger.Printf("Stopped consuming shard: %s", lockedReader.shardId)
+	Logger.Printf("Stopped consuming shard: %s", sc.lockedReader.shardId)
 }
 
 func (sr *SharedReader) consumeRecords() {
+	runningConsumers := map[string]*shardConsumer{}
+
 	for range time.Tick(streamConsumerUpdate) {
 		if sr.closed {
 			return
@@ -103,9 +99,20 @@ func (sr *SharedReader) consumeRecords() {
 		}
 
 		for _, shard := range streamDescription.Shards {
-			if !sr.client.elections.CheckAndAdd(GetStreamKey(sr.streamName, *shard.ShardId, sr.clientName)) {
+			key := GetStreamKey(sr.streamName, *shard.ShardId, sr.clientName)
+			sc := runningConsumers[key]
+
+			if !sr.client.elections.CheckAndAdd(key) {
+				if sc != nil && sc.running {
+					sc.lockedReader.Close()
+				}
 				continue
 			}
+
+			if sc != nil && sc.running {
+				continue
+			}
+
 			lockedReader, err := sr.client.NewLockedShardReader(sr.streamName, *shard.ShardId, sr.clientName)
 			if err == ErrShardLocked {
 				continue
@@ -119,9 +126,15 @@ func (sr *SharedReader) consumeRecords() {
 			sr.consumers = append(sr.consumers, lockedReader)
 			sr.consumersMu.Unlock()
 
-			go sr.consumeShard(lockedReader)
+			sc = &shardConsumer{
+				lockedReader: lockedReader,
+				running:      true,
+			}
+			runningConsumers[key] = sc
 
-			break // one shard per interval
+			go sr.consumeShard(sc)
+
+			break // one new shard per interval
 		}
 	}
 }
