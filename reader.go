@@ -6,17 +6,14 @@ import (
 
 	"b1/services/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-
-	"github.com/matijavizintin/go-kcl/locker"
 )
 
 const sleepTime = 100 * time.Microsecond
 
 var batchSize int64 = 100
 
-type LockedReader struct {
-	client   *Client
-	releaser locker.Releaser
+type Reader struct {
+	client *Client
 
 	streamName string
 	shardId    string
@@ -29,25 +26,13 @@ type LockedReader struct {
 	wg     *sync.WaitGroup
 }
 
-func (c *Client) NewLockedShardReader(streamName string, shardId string, clientName string) (*LockedReader, error) {
-	if c.distlock == nil {
-		return nil, ErrMissingLocker
-	}
+func (c *Client) NewReader(streamName string, shardId string, clientName string) (*Reader, error) {
 	if c.checkpoint == nil {
 		return nil, ErrMissingCheckpointer
 	}
 
-	releaser, success, err := c.distlock.Lock(GetStreamKey(streamName, shardId, clientName))
-	if err != nil {
-		return nil, err
-	}
-	if !success {
-		return nil, ErrShardLocked
-	}
-
-	r := &LockedReader{
+	r := &Reader{
 		client:     c,
-		releaser:   releaser,
 		streamName: streamName,
 		shardId:    shardId,
 		clientName: clientName,
@@ -56,7 +41,7 @@ func (c *Client) NewLockedShardReader(streamName string, shardId string, clientN
 	return r, nil
 }
 
-func (lr *LockedReader) Records() chan *kinesis.Record {
+func (lr *Reader) Records() chan *kinesis.Record {
 	ch := make(chan *kinesis.Record)
 
 	checkpoint, err := lr.client.checkpoint.GetCheckpoint(GetStreamKey(lr.streamName, lr.shardId, lr.clientName))
@@ -94,7 +79,7 @@ func (lr *LockedReader) Records() chan *kinesis.Record {
 	return ch
 }
 
-func (lr *LockedReader) UpdateCheckpoint() error {
+func (lr *Reader) UpdateCheckpoint() error {
 	if lr.checkpoint == nil {
 		return nil
 	}
@@ -104,26 +89,22 @@ func (lr *LockedReader) UpdateCheckpoint() error {
 	return lr.client.checkpoint.SetCheckpoint(GetStreamKey(lr.streamName, lr.shardId, lr.clientName), *lr.checkpoint)
 }
 
-func (lr *LockedReader) Close() error {
+func (lr *Reader) Close() error {
 	if lr.closed {
 		return nil
 	}
 
 	lr.closed = true
 	lr.wg.Wait()
-	err := lr.releaser.Release()
-	if err != nil {
-		lr.err = err
-	}
 
 	return lr.err
 }
 
-func (lr *LockedReader) IsClosed() bool {
+func (lr *Reader) IsClosed() bool {
 	return lr.closed
 }
 
-func (lr *LockedReader) consumeStream(ch chan *kinesis.Record, shardIterator *string) {
+func (lr *Reader) consumeStream(ch chan *kinesis.Record, shardIterator *string) {
 	for !lr.closed {
 		out, err := lr.client.kinesis.GetRecords(&kinesis.GetRecordsInput{
 			Limit:         &batchSize,

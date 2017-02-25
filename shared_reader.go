@@ -116,7 +116,7 @@ func (sr *SharedReader) consumeRecords() {
 				continue
 			}
 
-			lockedReader, err := sr.client.NewLockedShardReader(sr.streamName, *shard.ShardId, sr.clientName)
+			lockedReader, err := sr.client.NewLockedReader(sr.streamName, *shard.ShardId, sr.clientName)
 			if err == ErrShardLocked {
 				continue
 			} else if err != nil {
