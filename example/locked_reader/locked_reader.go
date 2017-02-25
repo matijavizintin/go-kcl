@@ -10,7 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/matijavizintin/go-kcl"
 	"github.com/matijavizintin/go-kcl/checkpointer"
-	"github.com/matijavizintin/go-kcl/distlock"
+	"github.com/matijavizintin/go-kcl/locker"
+	"github.com/matijavizintin/go-kcl/snitcher"
 )
 
 func main() {
@@ -18,8 +19,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	l := distlock.NewAearospikeLocker(client, "distlock")
-	cp := checkpointer.NewAerospikeCheckpointer(client, "distlock")
+	l := locker.NewAearospikeLocker(client, "distlock")
+	cp := checkpointer.NewAerospikeCheckpointer(client, "checkpointer")
+	s := snitcher.NewAerospikeSnitcher(client, "snitcher")
 
 	awsConfig := &aws.Config{
 		Region: aws.String("us-east-1"),
@@ -30,14 +32,14 @@ func main() {
 		),
 	}
 
-	c := kcl.New(awsConfig, l, cp)
+	c := kcl.New(awsConfig, l, cp, s)
 
 	for i := 0; i < 1000; i++ {
 		go c.PutRecord("Test1", fmt.Sprintf("%d", i), []byte(fmt.Sprintf("record %d", i)))
 		time.Sleep(1 * time.Millisecond)
 	}
 
-	reader, err := c.NewLockedShardReader("Test1", "shardId-000000000000", "testClient")
+	reader, err := c.NewLockedReader("Test1", "shardId-000000000000", "testClient")
 	if err != nil {
 		log.Fatal(err)
 	}

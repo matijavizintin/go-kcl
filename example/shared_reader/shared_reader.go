@@ -8,7 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/matijavizintin/go-kcl"
 	"github.com/matijavizintin/go-kcl/checkpointer"
-	"github.com/matijavizintin/go-kcl/distlock"
+	"github.com/matijavizintin/go-kcl/locker"
+	"github.com/matijavizintin/go-kcl/snitcher"
 )
 
 func main() {
@@ -26,10 +27,11 @@ func main() {
 		),
 	}
 
-	locker := distlock.NewAearospikeLocker(client, "test")
+	locker := locker.NewAearospikeLocker(client, "test")
 	checkpointer := checkpointer.NewAerospikeCheckpointer(client, "test")
+	snitcher := snitcher.NewAerospikeSnitcher(client, "test")
 
-	c := kcl.New(awsConfig, locker, checkpointer)
+	c := kcl.New(awsConfig, locker, checkpointer, snitcher)
 
 	reader, err := c.NewSharedReader("Demo", "testClient2")
 	if err != nil {
