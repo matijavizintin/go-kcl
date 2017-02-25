@@ -136,8 +136,6 @@ func (sr *SharedReader) consumeRecords() {
 			runningConsumers[key] = sc
 
 			go sr.consumeShard(sc)
-
-			break // one new shard per interval
 		}
 	}
 }
