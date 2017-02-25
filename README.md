@@ -1,9 +1,16 @@
 # go-kcl
 Go Kinesis client library
 
-We don't really believe in test, we test in production, but anyway they [![CircleCI](https://circleci.com/gh/matijavizintin/go-kcl.svg?style=svg)](https://circleci.com/gh/matijavizintin/go-kcl)
+We don't really believe in tests, we test in production, but anyway they [![CircleCI](https://circleci.com/gh/matijavizintin/go-kcl.svg?style=svg)](https://circleci.com/gh/matijavizintin/go-kcl)
 
-This library is a wrapper around kinesis part of AWS SDK. It facilitates reading from and putting to streams.
+This library is a wrapper around kinesis part of AWS SDK. It facilitates reading from and putting to streams. 
+
+It depends on AWS SDK and Aerospike client library o first of all you'll need
+```
+go get github.com/aws/aws-sdk-go
+go get github.com/aerospike/aerospike-client-go
+```
+Aerospike is currently used to store locks and state but we plan to add support for etcd.
 
 ### Consuming the stream
 It supports reading from a single shard and locking it so two clients don't consume the same shard. Example
