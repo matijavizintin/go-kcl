@@ -15,8 +15,6 @@ const (
 )
 
 type AerospikeReleaser struct {
-	locker *AerospikeCheckpointer
-
 	stop chan bool
 	key  *aerospike.Key
 }
