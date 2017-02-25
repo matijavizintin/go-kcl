@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	setName      = "kcl-snitcher"
+	setName      = "kcl_snitcher"
 	aerospikeTTL = 5
 )
 

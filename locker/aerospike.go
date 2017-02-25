@@ -13,7 +13,7 @@ const (
 	waitSleep             = time.Duration(100) * time.Millisecond
 	aerospikeTTL          = 5
 	waitRetries           = 3
-	setName               = "kcl-distlock"
+	setName               = "kcl_distlock"
 )
 
 type AerospikeReleaser struct {

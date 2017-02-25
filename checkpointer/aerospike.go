@@ -11,8 +11,7 @@ const (
 	waitSleep    = time.Duration(100) * time.Millisecond
 	aerospikeTTL = 365 * 24 * 3600
 	waitRetries  = 3
-	setName      = "kcl-checkpoint"
-	valueBinName = "checkpoint"
+	setName      = "kcl_checkpoint"
 )
 
 type AerospikeReleaser struct {
@@ -74,7 +73,7 @@ func (al *AerospikeCheckpointer) get(key string) (string, error) {
 		return "", err
 	}
 
-	record, err := al.client.Get(aerospike.NewPolicy(), asKey, setName)
+	record, err := al.client.Get(aerospike.NewPolicy(), asKey, setName, "checkpoint")
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +82,7 @@ func (al *AerospikeCheckpointer) get(key string) (string, error) {
 		return "", nil
 	}
 
-	binContent, ok := record.Bins[valueBinName]
+	binContent, ok := record.Bins["checkpoint"]
 	if ok {
 		return binContent.(string), nil
 	}
@@ -109,7 +108,7 @@ func (al *AerospikeCheckpointer) set(key, value string) error {
 		asKey,
 		aerospike.NewBin("hostname", hostname),
 		aerospike.NewBin("updated", time.Now().UTC().Format(time.RFC3339)),
-		aerospike.NewBin(valueBinName, value),
+		aerospike.NewBin("checkpoint", value),
 	)
 	if err != nil {
 		return err
