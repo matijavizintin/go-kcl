@@ -1,7 +1,7 @@
 # go-kcl
 Go Kinesis client library
 
-[![CircleCI](https://circleci.com/gh/matijavizintin/go-kcl.svg?style=svg)](https://circleci.com/gh/matijavizintin/go-kcl)
+We don't really believe in test, we test in production, but anyway they [![CircleCI](https://circleci.com/gh/matijavizintin/go-kcl.svg?style=svg)](https://circleci.com/gh/matijavizintin/go-kcl)
 
 This library is a wrapper around kinesis part of AWS SDK. It facilitates reading from and putting to streams.
 
