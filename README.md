@@ -56,7 +56,7 @@ if err != nil {
     // handle err
 }
 
-// do something with strems
+// do something with streams
 ```
 
 ### Consuming the stream
