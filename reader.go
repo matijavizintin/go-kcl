@@ -63,12 +63,12 @@ func (c *Client) NewReaderWithParameters(streamName string, shardId string, clie
 // Close and consume all messages from the channel. If you want to make checkpoints while consuming the stream and be
 // 100% safe that no messages got unprocessed you should call BlockReading, consume the channel, call UpdateCheckpoint
 // and then call ResumeReading.
-func (lr *Reader) Records() <-chan *kinesis.Record {
-	ch := make(chan *kinesis.Record, lr.channelBufferSize)
+func (r *Reader) Records() <-chan *kinesis.Record {
+	ch := make(chan *kinesis.Record, r.channelBufferSize)
 
-	checkpoint, err := lr.client.checkpoint.GetCheckpoint(GetStreamKey(lr.streamName, lr.shardId, lr.clientName))
+	checkpoint, err := r.client.checkpoint.GetCheckpoint(GetStreamKey(r.streamName, r.shardId, r.clientName))
 	if err != nil {
-		lr.err = err
+		r.err = err
 		close(ch)
 		return ch
 	}
@@ -81,106 +81,106 @@ func (lr *Reader) Records() <-chan *kinesis.Record {
 	}
 
 	iteratorInput := &kinesis.GetShardIteratorInput{
-		StreamName:        aws.String(lr.streamName),
-		ShardId:           aws.String(lr.shardId),
+		StreamName:        aws.String(r.streamName),
+		ShardId:           aws.String(r.shardId),
 		ShardIteratorType: shardIteratorType,
 	}
 	if checkpoint != "" {
 		iteratorInput.StartingSequenceNumber = aws.String(checkpoint)
 	}
 
-	iterator, err := lr.client.kinesis.GetShardIterator(iteratorInput)
+	iterator, err := r.client.kinesis.GetShardIterator(iteratorInput)
 	if err != nil {
-		lr.err = err
+		r.err = err
 		close(ch)
 		return ch
 	}
 
-	lr.wg.Add(1)
-	go lr.consumeStream(ch, iterator.ShardIterator)
+	r.wg.Add(1)
+	go r.consumeStream(ch, iterator.ShardIterator)
 	return ch
 }
 
 // UpdateCheckpoint sets the checkpoint to the last record that was read. It waits for the current batch to be
 // processed and pushed to the channel.
-func (lr *Reader) UpdateCheckpoint() error {
+func (r *Reader) UpdateCheckpoint() error {
 	// acquire lock so that checkpoint increments don't get discarded while updating checkpoint
-	lr.checkpointLock.Lock()
-	defer lr.checkpointLock.Unlock()
+	r.checkpointLock.Lock()
+	defer r.checkpointLock.Unlock()
 
-	if lr.checkpoint == nil {
+	if r.checkpoint == nil {
 		return nil
 	}
 
-	err := lr.client.checkpoint.SetCheckpoint(GetStreamKey(lr.streamName, lr.shardId, lr.clientName), *lr.checkpoint)
+	err := r.client.checkpoint.SetCheckpoint(GetStreamKey(r.streamName, r.shardId, r.clientName), *r.checkpoint)
 	if err != nil {
 		return err
 	}
 
-	lr.checkpoint = nil
+	r.checkpoint = nil
 	return nil
 }
 
 // BlockReading stops reading from the stream after the current batch is processed. This could be used to safely
 // update checkpoints before the reader is closed.
-func (lr *Reader) BlockReading() {
-	lr.streamReadLock.Lock()
+func (r *Reader) BlockReading() {
+	r.streamReadLock.Lock()
 }
 
 // ResumeReading from the stream
-func (lr *Reader) ResumeReading() {
-	lr.streamReadLock.Unlock()
+func (r *Reader) ResumeReading() {
+	r.streamReadLock.Unlock()
 }
 
 // Close waits for the current batch to be read and pushed to the channel and then stops the reading and closes the
 // channel. No further records will be read from the stream. After calling close and consuming the channel is safe to
 // call UpdateCheckpoint.
-func (lr *Reader) Close() error {
-	if lr.closed {
+func (r *Reader) Close() error {
+	if r.closed {
 		return nil
 	}
 
-	lr.closed = true
-	lr.wg.Wait()
+	r.closed = true
+	r.wg.Wait()
 
-	return lr.err
+	return r.err
 }
 
-func (lr *Reader) IsClosed() bool {
-	return lr.closed
+func (r *Reader) IsClosed() bool {
+	return r.closed
 }
 
-func (lr *Reader) consumeStream(ch chan *kinesis.Record, shardIterator *string) {
-	for !lr.closed {
-		lr.streamReadLock.Lock()
+func (r *Reader) consumeStream(ch chan *kinesis.Record, shardIterator *string) {
+	for !r.closed {
+		r.streamReadLock.Lock()
 
-		out, err := lr.client.kinesis.GetRecords(&kinesis.GetRecordsInput{
-			Limit:         lr.batchSize,
+		out, err := r.client.kinesis.GetRecords(&kinesis.GetRecordsInput{
+			Limit:         r.batchSize,
 			ShardIterator: shardIterator,
 		})
 		if err != nil {
-			lr.err = err
+			r.err = err
 			close(ch)
 			return
 		}
 
 		shardIterator = out.NextShardIterator
 		if len(out.Records) == 0 {
-			lr.streamReadLock.Unlock()
+			r.streamReadLock.Unlock()
 			continue
 		}
 
-		lr.checkpointLock.Lock()
+		r.checkpointLock.Lock()
 		for _, record := range out.Records {
 			ch <- record
-			lr.checkpoint = record.SequenceNumber
+			r.checkpoint = record.SequenceNumber
 		}
-		lr.checkpointLock.Unlock()
-		lr.streamReadLock.Unlock()
+		r.checkpointLock.Unlock()
+		r.streamReadLock.Unlock()
 
-		time.Sleep(lr.readInterval)
+		time.Sleep(r.readInterval)
 	}
 
 	close(ch)
-	lr.wg.Done()
+	r.wg.Done()
 }
