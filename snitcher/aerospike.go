@@ -1,7 +1,6 @@
 package snitcher
 
 import (
-	"log"
 	"math/rand"
 	"os"
 	"sort"
@@ -18,8 +17,6 @@ const (
 	updateInterval = time.Second
 )
 
-var Logger = log.New(os.Stderr, "", log.LstdFlags)
-
 type AerospikeSnitcher struct {
 	client    *aerospike.Client
 	namespace string
@@ -33,9 +30,9 @@ type AerospikeSnitcher struct {
 }
 
 type candidate struct {
-	key     string
-	winnner bool
-	order   float64
+	key    string
+	winner bool
+	order  float64
 }
 
 func NewAerospikeSnitcher(client *aerospike.Client, namespace string) *AerospikeSnitcher {
@@ -130,9 +127,9 @@ func (ae *AerospikeSnitcher) runSnitchers() {
 			newWeight := ownSeq
 			if currentClientId != "" && ae.clientId != currentClientId {
 				if newWeight+1.0 > currentWeight {
-					if candidate.winnner {
+					if candidate.winner {
 						Logger.Print("Ownership lost: ", candidate.key)
-						candidate.winnner = false
+						candidate.winner = false
 					}
 					continue
 				}
@@ -158,14 +155,14 @@ func (ae *AerospikeSnitcher) runSnitchers() {
 			if ae.clientId == newClientId {
 				ownSeq += 1.0
 
-				if !candidate.winnner {
-					candidate.winnner = true
+				if !candidate.winner {
+					candidate.winner = true
 					newOwnership = true
 					Logger.Print("Ownership won: ", candidate.key)
 				}
 			} else {
-				if candidate.winnner {
-					candidate.winnner = false
+				if candidate.winner {
+					candidate.winner = false
 					Logger.Print("Ownership lost: ", candidate.key)
 				}
 			}
@@ -182,7 +179,7 @@ func (ae *AerospikeSnitcher) CheckOwnership(key string) bool {
 		return false
 	}
 
-	return w.winnner
+	return w.winner
 }
 
 func (ae *AerospikeSnitcher) RegisterKey(key string) {

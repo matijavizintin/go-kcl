@@ -74,3 +74,46 @@ func (c *Client) StreamDescription(streamName string) (*kinesis.StreamDescriptio
 
 	return out.StreamDescription, nil
 }
+
+func (c *Client) CreateStream(streamName string, shardCount int) error {
+	_, err := c.kinesis.CreateStream(&kinesis.CreateStreamInput{
+		StreamName: aws.String(streamName),
+		ShardCount: aws.Int64(int64(shardCount)),
+	})
+	return err
+}
+
+func (c *Client) UpdateStream(streamName string, shardsCount int) error {
+	_, err := c.kinesis.UpdateShardCount(&kinesis.UpdateShardCountInput{
+		StreamName:       aws.String(streamName),
+		ScalingType:      aws.String(kinesis.ScalingTypeUniformScaling),
+		TargetShardCount: aws.Int64(int64(shardsCount)),
+	})
+	return err
+}
+
+func (c *Client) DeleteStream(streamName string) error {
+	_, err := c.kinesis.DeleteStream(&kinesis.DeleteStreamInput{
+		StreamName: aws.String(streamName),
+	})
+	return err
+}
+
+func (c *Client) ListStreams() ([]string, error) {
+	res := []string{}
+
+	hasMore := true
+	for hasMore {
+		out, err := c.kinesis.ListStreams(&kinesis.ListStreamsInput{})
+		if err != nil {
+			return nil, err
+		}
+
+		hasMore = *out.HasMoreStreams
+		for _, streamName := range out.StreamNames {
+			res = append(res, *streamName)
+		}
+	}
+
+	return res, nil
+}
