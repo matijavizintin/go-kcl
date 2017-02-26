@@ -79,6 +79,9 @@ func (lr *LockedReader) CloseAndRelease(wg *sync.WaitGroup) error {
 // IMPORTANT: You should call wg.Done() when the channel is closed and consumed. Failing to call wg.Done() will result
 // in this call hanging indefinitely.
 func (lr *LockedReader) CloseUpdateCheckpointAndRelease(wg *sync.WaitGroup) error {
+	// add to wg so it will wait to be released when the channel is closed and consumed
+	wg.Add(1)
+
 	err := lr.Close()
 	if err != nil {
 		return err
