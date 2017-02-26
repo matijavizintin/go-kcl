@@ -20,9 +20,9 @@ const (
 	aerospikeNamespace = "kinesis"
 	streamName         = "kcl-example"
 	clientName         = "kcl-test-client"
-	streamReadInterval = 10 * time.Millisecond
-	readBatchSize      = 1000
-	channelSize        = 100
+	streamReadInterval = time.Second
+	readBatchSize      = 10
+	channelSize        = 10
 )
 
 func main() {

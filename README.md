@@ -5,7 +5,7 @@ Go Kinesis client library
 
 We don't really believe in tests, we test in production, but anyway they [![CircleCI](https://circleci.com/gh/matijavizintin/go-kcl.svg?style=svg)](https://circleci.com/gh/matijavizintin/go-kcl)
 
-This library is a wrapper around kinesis part of AWS SDK. It facilitates reading from and putting to streams. 
+This library is a wrapper around kinesis part of AWS SDK. It facilitates reading from and putting into the streams. 
 
 It depends on AWS SDK and Aerospike client library so first of all you'll need
 ```
@@ -17,7 +17,7 @@ Aerospike is currently used to store locks and state but we plan to add support 
 ### Stream manipulation
 Client:
 ```
-client := kcl.New(awsConfig, locker, checkpointer)
+client := kcl.New(awsConfig, locker, checkpointer, snitcher)
 ```
 
 Stream creation example:
@@ -65,32 +65,28 @@ It supports reading from a single shard and locking it so two clients don't cons
 ```
 client := kcl.New(awsConfig, locker, checkpointer)
 
-reader, err := client.NewLockedShardReader(streamName, shardId, clientName)
+reader, err := client.NewLockedReader(streamName, shardId, clientName)
 if err != nil {
     return err
 }
 
-go func() {
+wg := &sync.WaitGroup{}
+go func(wg *sync.WaitGroup) {
 		for record := range reader.Records() {
 			// handle record
 		}
-	}()
+		
+		wg.Done()
+	}(wg)
 	
 // wait for until ready to close
-
-if err := reader.Close(); err != nil {
-    return err
-}
-
-if err = reader.UpdateCheckpoint(); err != nil {
-    return err
-}
+err = reader.CloseUpdateCheckpointAndRelease(wg)
 ```
 
 It also supports also the shared reader that tries to read from as many shards as available. Example:
 
 ```
-client := kcl.New(awsConfig, locker, checkpointer)
+client := kcl.New(awsConfig, locker, checkpointer, snitch)
 
 reader, err := client.NewSharedReader(streamName, clientName)
 if err != nil {
@@ -104,14 +100,12 @@ go func() {
 	}()
 	
 // wait for until ready to close
-
-if err := reader.Close(); err != nil {
-    return err
+err = reader.CloseUpdateCheckpointAndRelease()
+if err != nil {
+    // handle err
 }
 
-if err = reader.UpdateCheckpoint(); err != nil {
-    return err
-}
+err = reader.UpdateCheckpoint()
 ```
 
 ### Pushing into the stream
@@ -119,7 +113,13 @@ if err = reader.UpdateCheckpoint(); err != nil {
 Example of putting a record into a stream:
 
 ```
-client := kcl.New(awsConfig, locker, checkpointer)
+client := kcl.New(awsConfig, locker, checkpointer, snitcher)
 
 err := client.PutRecord(streamName, partitionKey, record)
+```
+
+```
+client := kcl.New(awsConfig, locker, checkpointer, snitcher)
+
+err := client.PutRecords(streamName, records)
 ```
