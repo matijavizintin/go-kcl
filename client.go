@@ -52,7 +52,7 @@ func (c *Client) PutRecord(streamName, partitionKey string, record []byte) error
 	return nil
 }
 
-func (c *Client) PutRecords(streamName, partitionKey string, records []*kinesis.PutRecordsRequestEntry) error {
+func (c *Client) PutRecords(streamName string, records []*kinesis.PutRecordsRequestEntry) error {
 	_, err := c.kinesis.PutRecords(&kinesis.PutRecordsInput{
 		Records:    records,
 		StreamName: aws.String(streamName),

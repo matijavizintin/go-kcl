@@ -73,20 +73,21 @@ func (lr *LockedReader) CloseAndRelease(wg *sync.WaitGroup) error {
 	return lr.Release()
 }
 
-// CloseUpdateCheckpointAndRelease closes the reader, updates the checkpoint of the reader and releases the lock AFTER
+// CloseUpdateCheckpointAndRelease closes the reader and updates the checkpoint of the reader and releases the lock AFTER
 // wg.Done() was called.
 //
 // IMPORTANT: You should call wg.Done() when the channel is closed and consumed. Failing to call wg.Done() will result
 // in this call hanging indefinitely.
-func (lr *LockedReader) CloseUpdateCheckpointAndRelease() error {
+func (lr *LockedReader) CloseUpdateCheckpointAndRelease(wg *sync.WaitGroup) error {
 	err := lr.Close()
 	if err != nil {
-		return nil
+		return err
 	}
 
+	wg.Wait()
 	err = lr.UpdateCheckpoint()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return lr.Release()
