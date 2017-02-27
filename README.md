@@ -2,6 +2,7 @@
 Go Kinesis client library
 
 ** go-kcl is a hackday project so api is not in any way stable yet and it does contain bugs. **
+
 ** Currently it covers only the streaming part of Kinesis**
 
 We do believe in tests, but we'd like to stabilize apis first. Anyway they do [![CircleCI](https://circleci.com/gh/matijavizintin/go-kcl.svg?style=svg)](https://circleci.com/gh/matijavizintin/go-kcl)
