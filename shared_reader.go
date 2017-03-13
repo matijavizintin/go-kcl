@@ -14,8 +14,11 @@ var (
 type SharedReader struct {
 	client *Client
 
-	streamName string
-	clientName string
+	streamName         string
+	clientName         string
+	streamReadInterval time.Duration
+	readBatchSize      int
+	channelBufferSize  int
 
 	err error
 
@@ -34,6 +37,10 @@ type shardConsumer struct {
 }
 
 func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedReader, error) {
+	return c.NewSharedReaderWithParameters(streamName, clientName, defaultReadInterval, defaultBatchSize, defaultChannelSize)
+}
+
+func (c *Client) NewSharedReaderWithParameters(streamName string, clientName string, streamReadInterval time.Duration, readBatchSize int, channelBufferSize int) (*SharedReader, error) {
 	if c.distlock == nil {
 		return nil, ErrMissingLocker
 	}
@@ -45,9 +52,12 @@ func (c *Client) NewSharedReader(streamName string, clientName string) (*SharedR
 	}
 
 	r := &SharedReader{
-		client:     c,
-		streamName: streamName,
-		clientName: clientName,
+		client:             c,
+		streamName:         streamName,
+		clientName:         clientName,
+		streamReadInterval: streamReadInterval,
+		readBatchSize:      readBatchSize,
+		channelBufferSize:  channelBufferSize,
 
 		recordsChan: make(chan *kinesis.Record),
 
@@ -116,7 +126,7 @@ func (sr *SharedReader) consumeRecords() {
 				continue
 			}
 
-			lockedReader, err := sr.client.NewLockedReader(sr.streamName, *shard.ShardId, sr.clientName)
+			lockedReader, err := sr.client.NewLockedReaderWithParameters(sr.streamName, *shard.ShardId, sr.clientName, sr.streamReadInterval, sr.readBatchSize, sr.channelBufferSize)
 			if err == ErrShardLocked {
 				continue
 			} else if err != nil {

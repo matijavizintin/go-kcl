@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,6 +23,23 @@ var (
 )
 
 var Logger = log.New(os.Stderr, "", log.LstdFlags)
+
+type Kinesis interface {
+	PutRecord(streamName, partitionKey string, record []byte) error
+	PutRecords(streamName string, records []*kinesis.PutRecordsRequestEntry) error
+
+	StreamDescription(streamName string) (*kinesis.StreamDescription, error)
+	CreateStream(streamName string, shardCount int) error
+	UpdateStream(streamName string, shardsCount int) error
+	DeleteStream(streamName string) error
+	ListStreams() ([]string, error)
+
+	NewReader(streamName string, shardId string, clientName string) (*Reader, error)
+	NewReaderWithParameters(streamName string, shardId string, clientName string, streamReadInterval time.Duration, readBatchSize int, channelBufferSize int) (*Reader, error)
+	NewLockedReader(streamName string, shardId string, clientName string) (*LockedReader, error)
+	NewLockedReaderWithParameters(streamName string, shardId string, clientName string, streamReadInterval time.Duration, readBatchSize int, channelBufferSize int) (*LockedReader, error)
+	NewSharedReader(streamName string, clientName string) (*SharedReader, error)
+}
 
 type Client struct {
 	kinesis    kinesisiface.KinesisAPI
