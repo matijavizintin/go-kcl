@@ -80,8 +80,6 @@ func (sr *SharedReader) consumeShard(sc *shardConsumer) {
 	Logger.Printf("Consuming shard: %s", sc.lockedReader.shardId)
 
 	for record := range sc.lockedReader.Records() {
-		Logger.Printf("Shard %s | Message: %s", sc.lockedReader.shardId, string(record.Data))
-
 		sr.recordsChan <- record
 	}
 	if err := sc.lockedReader.Close(); err != nil {
