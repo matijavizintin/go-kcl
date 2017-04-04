@@ -1,7 +1,7 @@
 # go-kcl
 Go Kinesis client library
 
-**go-kcl is a hackday project so api is not in any way stable yet and it does contain bugs.**
+**go-kcl is a hackday project at [Zemanta](https://github.com/Zemanta/)  so api is not in any way stable yet and it does contain bugs.**
 
 **Currently it covers only the streaming part of Kinesis**
 
